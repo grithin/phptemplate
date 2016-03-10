@@ -1,0 +1,22 @@
+{
+    "name": "grithin/phptemplate",
+    "description": "PHP Template.",
+    "keywords": ["php template"],
+    "license": "Apache License, Version 2.0",
+    "homepage": "http://devtools.grithin.com",
+    "authors": [
+        {
+            "name": "Adam F Frederick",
+            "email": "bob_bf2@deemit.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.5.9",
+        "grithin/phpbase": ">=2.0.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Grithin\\": "src/"
+        }
+    }
+}
