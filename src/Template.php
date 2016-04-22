@@ -54,9 +54,9 @@ class Template{
 	}
 	/// setter for $parent
 	function parent($parent){
-		$this->parent = $parent;
+		$this->parent_stack[] = $parent;
 	}
-	public $parent; ///< template to parent current template into
+	public $parent_stack = [];
 	public $inner;///< a buffer for the inner template content
 	///used to get the content of a single template file
 	/**
@@ -70,6 +70,7 @@ class Template{
 		2.	use $template->inner variable created for the parent
 	*/
 	function get_template($template,$vars=[]){
+		$this->parent_stack[] = '';
 		$vars['template'] = $this;
 
 		ob_start();
@@ -79,16 +80,23 @@ class Template{
 		\Grithin\Files::req($this->options['folder'].$template,null,$vars);
 		$output = ob_get_clean();
 
-		if($this->parent){
+		$parent = array_pop($this->parent_stack);
+
+		if($parent){
 			$this->inner = $output;
-			$template = $this->parent;
-			unset($this->parent);
+			$template = $parent;
 			$output = $this->get_template($template,$vars);
 			unset($this->inner);
+			array_pop($this->parent_stack);
 		}
 
 		return $output;
 	}
+	/// alias for get_template
+	function get($template,$vars=[]){
+		return $this->get_template($template,$vars);
+	}
+
 	/// get the template corresponding to the current control, assuming corresponding path
 	function get_current($vars=[]){
 		return $this->get_template($this->control_name(), $vars);
@@ -122,12 +130,19 @@ class Template{
 	public function section($name=''){
 		if($this->open_section){
 			$this->sections[$this->open_section] = ob_get_clean();
+			if($name && $name == $this->open_section){
+				$name = '';
+			}
 			$this->open_section = '';
 		}
 		if($name){
 			$this->open_section = $name;
 			ob_start();
 		}
+	}
+	/// convenience function, calls section()
+	public function close_section(){
+		$this->section();
 	}
 	/// gets the string collected under a section name.
 	public function get_section($name){
