@@ -40,6 +40,13 @@ class Template{
 
 		$this->url_path = substr($_SERVER['REQUEST_URI'],1);//request uri always starts with '/'
 	}
+	# get template name from a control path
+	function from_control_path($path){
+		$characters = strlen($this->options['control_folder']);
+		if($this->options['control_folder'] == substr($path, 0, $characters)){
+			return explode('.', substr($path,$characters + 1))[0];
+		}
+	}
 
 	# get last control name
 	function control_name(){
@@ -101,6 +108,10 @@ class Template{
 	function get_current($vars=[]){
 		return $this->get_template($this->control_name(), $vars);
 	}
+	# find template based on input control file path
+	function from($file){
+		return $this->get($this->from_control_path($file), $vars);
+	}
 
 	/// display and end
 	function end_template($template, $vars=[]){
@@ -110,6 +121,11 @@ class Template{
 	/// display and end
 	function end_current($vars=[]){
 		echo $this->get_current($vars);
+		exit;
+	}
+	/// display and end
+	function end_from($file, $vars=[]){
+		echo $this->get($this->from_control_path($file), $vars);
 		exit;
 	}
 
