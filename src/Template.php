@@ -9,6 +9,8 @@ linear display:
 namespace Grithin;
 
 class Template{
+	public $helpers = [];
+
 	/**
 	@param	options	{
 		folder: <template folder>
@@ -17,6 +19,9 @@ class Template{
 	}
 	*/
 	function __construct($options=[]){
+
+		//++ resolve template folder {
+
 		if(!$options['folder']){
 			# attempt to find template folder at first file level, or at one higher
 			$first_file = \Grithin\Reflection::firstFileExecuted();
@@ -32,8 +37,16 @@ class Template{
 			throw new \Exception('View folder doesn\'t exist');
 		}
 
+		//++ }
+
+		# resolve control folder
 		if(!$options['control_folder']){
 			$options['control_folder'] = realpath($options['folder'].'../control');
+		}
+
+		$this->helpers = ['template'=>$this];
+		if($options['helpers']){
+			$this->helpers = array_merge($this->helpers, $options['helpers']);
 		}
 
 		$this->options = $options;
@@ -48,17 +61,6 @@ class Template{
 		}
 	}
 
-	# get last control name
-	function control_name(){
-		if($this->options['control_folder']){
-			$trace = \Grithin\Reflection::externalCaller();
-			$directory = dirname($trace['file']);
-			$characters = strlen($this->options['control_folder']);
-			if($this->options['control_folder'] == substr($directory, 0, $characters)){
-				return explode('.', substr($trace['file'],$characters + 1))[0];
-			}
-		}
-	}
 	/// setter for $parent
 	function parent($parent){
 		$this->parent_stack[] = $parent;
@@ -78,13 +80,13 @@ class Template{
 	*/
 	function get_template($template,$vars=[]){
 		$this->parent_stack[] = '';
-		$vars['template'] = $this;
+		$used_vars = array_merge($this->helpers, $vars);
 
 		ob_start();
 		if(substr($template,-4) != '.php'){
 			$template = $template.'.php';
 		}
-		\Grithin\Files::req($this->options['folder'].$template,null,$vars);
+		\Grithin\Files::req($this->options['folder'].$template,$used_vars);
 		$output = ob_get_clean();
 
 		$parent = array_pop($this->parent_stack);
@@ -104,12 +106,12 @@ class Template{
 		return $this->get_template($template,$vars);
 	}
 
-	/// get the template corresponding to the current control, assuming corresponding path
+	/// get the template corresponding to the current control.  Must call from within the control.  I recommend you use `from` instead, since it doesn't have the overhead of a backtrace
 	function get_current($vars=[]){
-		return $this->get_template($this->control_name(), $vars);
+		return $this->get($this->from_control_path(debug_backtrace()[0]['file']), $vars);
 	}
 	# find template based on input control file path
-	function from($file){
+	function from($file, $vars=[]){
 		return $this->get($this->from_control_path($file), $vars);
 	}
 

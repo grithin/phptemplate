@@ -1,24 +1,10 @@
 # Grithin's PHP Template
 
 ## Design Goal
--	Provide template hierarchy functionality (template-template wrapping)
--	Provide linear and intra-linear template concatenation
--	Provide template variable context
--	Provide simple control/template path framework assumption
-
-## History
-This is a greatly reduced version of the View class from my Brushfire framework.  The biggest design difference being: the template determines the parent - instead of the caller.
-
+-	Template hierarchy (a template can have a parent wrapper)
+-	Sectionalised parts (can define sections for inclusion later)
+-	Componentised parts (can require another template within a template)
+-	Frameworked structure (use of control folder and template folder for easy template inclusion from control files)
 
 ## Use
-
-_Appending Sections_
-```html
-<?	$template->section('footer'); ?>
-<?= $template->get_section('footer'); ?>
-
-&copy;Rights Holder 2006-<?= date('Y') ?>
-
-<?	$template->section(); ?>
-
-```
+See `examples` folder
