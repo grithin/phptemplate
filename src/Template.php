@@ -120,6 +120,10 @@ class Template{
 		echo $this->get_template($template, $vars);
 		exit;
 	}
+	/// alias for end_template
+	function end($template, $vars=[]){
+		return $this->end_template($template, $vars);
+	}
 	/// display and end
 	function end_current($vars=[]){
 		echo $this->get_current($vars);
@@ -158,8 +162,18 @@ class Template{
 			ob_start();
 		}
 	}
-	/// convenience function, calls section()
+	/// start section, ensuring no other section is open
+	public function start_section($name){
+		if($this->open_section){
+			throw new \Exception('Section is already open: "'.$this->open_section.'"');
+		}
+		$this->section($name);
+	}
+	/// close section, ensuring a section is open
 	public function close_section(){
+		if(!$this->open_section){
+			throw new \Exception('No open section');
+		}
 		$this->section();
 	}
 	/// gets the string collected under a section name.
