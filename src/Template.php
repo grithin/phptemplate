@@ -181,4 +181,73 @@ class Template{
 		return $this->sections[$name];
 	}
 //+	}
+
+
+	# inline interpretted templates
+	/*
+	1. handles applying functions from a class, or from global context, by using '${'functionName'|'param'}'
+	2. handles variables mapped to keys in $variables using '${'keyName'}'
+	@note handles nesting
+		${urlencode|${customer_first_name}}
+	*/
+	/* parameters
+	class_instance : < an optional class to which function names are referenced >
+	*/
+	/* examples
+	# basic variable replacement
+	$x = inline('hello ${bob}, ', ['bob'=>'mokneys']);
+
+	# globally contexted function with variable replacement
+	$x = inline('hello ${ucwords|${bob}}, ', ['bob'=>'mokneys']);
+
+	# class instance provided contexted function with variable replacement
+	class MakeZero{ function doit($x){ return preg_replace('@.@','0', $x); } }
+	$x = inline('hello ${doit|${bob}}, ', ['bob'=>'mokneys'], new MakeZero);
+
+	*/
+	static function inline($message, $variables, $class_instance=null){
+		//escape only partially implemented
+		$charCount = strlen($message);
+		$depth = 0;
+
+		for($i=0,$f=-1;$i<$charCount;$i++){
+			$write = true;
+			if($message[$i] == '$'){
+				$indicater = 1;
+			}elseif($indicater == 1 && $message[$i] == '{'){
+				$write = false;
+				//remove previous character from previous depth
+				$chars[$depth] = substr($chars[$depth],0,-1);
+
+				$indicater = 0;
+				$depth++;
+			}elseif($message[$i] == '\\'){
+				$escaped = true;
+			}elseif($depth > 0 && $message[$i] == '}' && !$escaped){
+				$write = false;
+				$parts = explode('|',$chars[$depth],2);
+				if(count($parts) > 1){
+					if($class_instance){
+						$value = call_user_func([$class_instance,$parts[0]], $parts[1]);
+					}else{ # default to global context for functions
+						$value = call_user_func($parts[0],$parts[1]);
+					}
+
+				}else{
+					$value = $variables[$parts[0]];
+				}
+				//clear out current depth, and return to previous depth
+				$chars[$depth] = '';
+				$depth--;
+				$chars[$depth] .= $value;
+			}else{
+				$escaped = false;
+			}
+			if($write){
+				$chars[$depth] .= $message[$i];
+			}
+
+		}
+		return $chars[0];
+	}
 }
