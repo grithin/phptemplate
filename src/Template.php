@@ -8,6 +8,8 @@ linear display:
 
 namespace Grithin;
 
+use \Exception;
+
 class Template{
 	public $helpers = [];
 
@@ -43,6 +45,10 @@ class Template{
 		if(!$options['control_folder']){
 			$options['control_folder'] = realpath($options['folder'].'../control');
 		}
+		if(substr($options['control_folder'],-1) != '/'){
+			$options['control_folder'] .= '/'; # `folder` should end with `/`
+		}
+
 
 		$this->helpers = ['template'=>$this];
 		if($options['helpers']){
@@ -53,13 +59,7 @@ class Template{
 
 		$this->url_path = substr($_SERVER['REQUEST_URI'],1);//request uri always starts with '/'
 	}
-	# get template name from a control path
-	function from_control_path($path){
-		$characters = strlen($this->options['control_folder']);
-		if($this->options['control_folder'] == substr($path, 0, $characters)){
-			return explode('.', substr($path,$characters + 1))[0];
-		}
-	}
+
 
 	/// setter for $parent
 	function parent($parent){
@@ -106,9 +106,56 @@ class Template{
 		return $this->get_template($template,$vars);
 	}
 
+	# get template name from a control path
+	public function from_control_path($path, $template_name=null){
+		#+ sanity check {
+		$characters = strlen($this->options['control_folder']);
+		if($this->options['control_folder'] != substr($path, 0, $characters)){
+			throw new Exception('control path does not match parameter');
+		}
+		#+ }
+
+		$relative_current_control_file = substr($path,$characters);
+		if($template_name){
+			return dirname($relative_current_control_file).'/'.$template_name;
+		}else{
+			return $relative_current_control_file;
+		}
+	}
+
+	# try to find the current control file from the debug stack
+	public function current_control_file($back = 6){
+		if($back){ #< go back as far as 5 stack items looking for the control folder
+			$trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $back);
+		}else{
+			$trace = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS);
+		}
+
+		$characters = strlen($this->options['control_folder']);
+		foreach($trace as $item){
+			if($this->options['control_folder'] == substr($item['file'], 0, $characters)){
+				return $item['file'];
+			}
+		}
+
+		if(!$back){ # attempt a full backtrace
+			return $this->current_control_file(null);
+		}
+
+		throw new Exception('could not find control file in debug stack');
+	}
+	public function template_relative_path_from_current($template_name=null){
+		return $this->from_control_path($this->current_control_file(), $template_name);
+	}
+
 	/// get the template corresponding to the current control.  Must call from within the control.  I recommend you use `from` instead, since it doesn't have the overhead of a backtrace
-	function get_current($vars=[]){
-		return $this->get($this->from_control_path(debug_backtrace()[0]['file']), $vars);
+	public function get_current($vars=[]){
+		$template_file = $this->template_relative_path_from_current();
+		return $this->get($template_file, $vars);
+	}
+	public function from_current($template_name=null, $vars=[]){
+		$template_file = $this->template_relative_path_from_current($template_name);
+		return $this->get($template_file, $vars);
 	}
 	# find template based on input control file path
 	function from($file, $vars=[]){
