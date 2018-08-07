@@ -50,7 +50,7 @@ class Template{
 		}
 
 
-		$this->helpers = ['template'=>$this];
+		$this->helpers = ['template'=>$this, 'Template'=>$this];
 		if($options['helpers']){
 			$this->helpers = array_merge($this->helpers, $options['helpers']);
 		}
