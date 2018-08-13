@@ -80,6 +80,11 @@ class Template{
 	*/
 	function get_template($template,$vars=[]){
 		$this->parent_stack[] = '';
+		# ensure there is an `all` variable, so template can know all variables that were passed to it
+		# use ex: $Template->backend_data['page_data'] = $all;
+		if(!$vars['all']){
+			$vars['all'] = $vars;
+		}
 		$used_vars = array_merge($this->helpers, $vars);
 
 		ob_start();
