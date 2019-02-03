@@ -204,7 +204,7 @@ class Template{
 	public function section($name=''){
 		if($this->open_section){
 			$this->sections[$this->open_section] = ob_get_clean();
-			if($name && $name == $this->open_section){
+			if($name && $name == $this->open_section){ #< if open section is same as name provided, consider this a close command
 				$name = '';
 			}
 			$this->open_section = '';
@@ -215,19 +215,38 @@ class Template{
 		}
 	}
 	/// start section, ensuring no other section is open
-	public function start_section($name){
+	public function section_start($name){
 		if($this->open_section){
 			throw new \Exception('Section is already open: "'.$this->open_section.'"');
 		}
 		$this->section($name);
 	}
-	/// close section, ensuring a section is open
-	public function close_section(){
+	# alias, deprecated
+	public function start_section($name){
+		call_user_func_array([$this, 'section_start'], func_get_args());
+	}
+	/// end section, ensuring a section is open
+	public function section_end(){
 		if(!$this->open_section){
 			throw new \Exception('No open section');
 		}
 		$this->section();
 	}
+	# alias, deprecated
+	public function close_section(){
+		call_user_func_array([$this, 'section_end'], func_get_args());
+	}
+	# close open section and open new section
+	public function section_next($name){
+		if(!$this->open_section){
+			throw new \Exception('No open section');
+		}
+		$this->sections[$this->open_section] = ob_get_clean();
+		$this->open_section = $name;
+		ob_start();
+	}
+
+
 	/// gets the string collected under a section name.
 	public function get_section($name){
 		return $this->sections[$name];
