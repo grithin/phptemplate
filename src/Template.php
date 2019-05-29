@@ -65,8 +65,9 @@ class Template{
 	function parent($parent){
 		$this->parent_stack[] = $parent;
 	}
-	public $parent_stack = [];
+	public $parent_stack = []; # it is necessary to use a stack because components within a template may have their own parents (thus a single $parent variable would not work, and a stack must be used for linear progression)
 	public $inner;///< a buffer for the inner template content
+	public $current_template; #< the current template file
 	///used to get the content of a single template file
 	/**
 	@param	template	string path to template file relative to the templateFolder.  .php is appended to this path.
@@ -74,7 +75,7 @@ class Template{
 	@return	output from a template
 
 	@note
-		there are 2 ways to refer to an inner parentped template from the outer template
+		there are 2 ways to refer to an inner parented template from the outer template
 		1.	use the section creation functions
 		2.	use $template->inner variable created for the parent
 	*/
@@ -85,24 +86,41 @@ class Template{
 		if(!$vars['all']){
 			$vars['all'] = $vars;
 		}
+
 		$used_vars = array_merge($this->helpers, $vars);
 
 		ob_start();
 		if(substr($template,-4) != '.php'){
 			$template = $template.'.php';
 		}
+
+		#+ handle relative paths by making them relative to the calling template, if there is a calling template {
+		if($this->current_template && substr($template, 0, 2) == './' || substr($template, 0, 3) == '../'){
+			$template = \Grithin\Files::absolute_path($this->current_template.'/../'.$template);
+		}
+		#+ }
+
+		#+ maintain a current_template variable, accounting for nesting {
+		$previous_current = $this->current_template;
+		$this->current_template = $template;
+		#+ }
+
+
 		\Grithin\Files::req($this->options['folder'].$template,$used_vars);
 		$output = ob_get_clean();
 
 		$parent = array_pop($this->parent_stack);
 
-		if($parent){
+		if($parent){ # will either be '', indicating no parent, or the parent template for this particular template
 			$this->inner = $output;
 			$template = $parent;
 			$output = $this->get_template($template,$vars);
 			unset($this->inner);
 			array_pop($this->parent_stack);
 		}
+		#+ maintain a current_template variable, accounting for nesting {
+		$this->current_template = $previous_current;
+		#+ }
 
 		return $output;
 	}
