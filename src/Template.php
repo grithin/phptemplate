@@ -273,14 +273,16 @@ class Template{
 
 
 	# inline interpretted templates
-	/*
-	1. handles applying functions from a class, or from global context, by using '${'functionName'|'param'}'
-	2. handles variables mapped to keys in $variables using '${'keyName'}'
-	@note handles nesting
-		${urlencode|${customer_first_name}}
+	/* about
+	-	handles applying functions from a class, or from global context, by using '${'functionName'|'param'}'
+	-	handles variables mapped to keys in $variables using '${'keyName'}'
+		-	the variables will be resolved using $class_instance->__get() if not found withing the variable dictionary
+	-	handles nesting:
+		ex: ${urlencode|${customer_first_name}}
 	*/
-	/* parameters
-	class_instance : < an optional class to which function names are referenced >
+	/* param
+	variables: < dictionary of variables >
+	class_instance : < an optional class to which function names are referenced and unfound variables, using __get >
 	*/
 	/* examples
 	# basic variable replacement
@@ -294,10 +296,26 @@ class Template{
 	$x = inline('hello ${doit|${bob}}, ', ['bob'=>'mokneys'], new MakeZero);
 
 	*/
-	static function inline($message, $variables, $class_instance=null){
+	/*	param overload
+	$variables can be the $class_instance
+	*/
+	static function inline($message, $variables=[], $class_instance=null){
 		//escape only partially implemented
 		$charCount = strlen($message);
 		$depth = 0;
+
+		#+ $variables is a class instance, move the variables around {
+		if(is_object($variables)){
+			$class_instance = $variables;
+			$variables = [];
+		}
+		#+ }
+
+		$class_has_variables = false;
+		if(in_array('ArrayAccess', class_implements($class_instance))){
+			$class_has_variables = true;
+		}
+
 
 		for($i=0,$f=-1;$i<$charCount;$i++){
 			$write = true;
@@ -312,18 +330,24 @@ class Template{
 				$depth++;
 			}elseif($message[$i] == '\\'){
 				$escaped = true;
-			}elseif($depth > 0 && $message[$i] == '}' && !$escaped){
+			}elseif($depth > 0 && $message[$i] == '}' && !$escaped){ # special syntax brackets have closed, check meaning
 				$write = false;
 				$parts = explode('|',$chars[$depth],2);
-				if(count($parts) > 1){
+				if(count($parts) > 1){ # this is a function
 					if($class_instance){
 						$value = call_user_func([$class_instance,$parts[0]], $parts[1]);
 					}else{ # default to global context for functions
 						$value = call_user_func($parts[0],$parts[1]);
 					}
 
-				}else{
-					$value = $variables[$parts[0]];
+				}else{ # this is a variable
+					if(array_key_exists($parts[0], $variables)){ # check variable dictionary
+						$value = $variables[$parts[0]];
+					}elseif($class_has_variables){
+						$value = $class_instance[$parts[0]];
+					}else{ # no variable found, return blank
+						$value = '';
+					}
 				}
 				//clear out current depth, and return to previous depth
 				$chars[$depth] = '';
