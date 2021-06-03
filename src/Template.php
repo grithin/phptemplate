@@ -24,7 +24,7 @@ class Template{
 
 		//++ resolve template folder {
 
-		if(!$options['folder']){
+		if(empty($options['folder'])){
 			# attempt to find template folder at first file level, or at one higher
 			$first_file = \Grithin\Reflection::firstFileExecuted();
 
@@ -35,14 +35,14 @@ class Template{
 		}
 		$options['folder'] = realpath($options['folder']).'/';
 
-		if(!$options['folder']){
+		if(empty($options['folder'])){
 			throw new \Exception('View folder doesn\'t exist');
 		}
 
 		//++ }
 
 		# resolve control folder
-		if(!$options['control_folder']){
+		if(empty($options['control_folder'])){
 			$options['control_folder'] = realpath($options['folder'].'../control');
 		}
 		if(substr($options['control_folder'],-1) != '/'){
@@ -83,7 +83,7 @@ class Template{
 		$this->parent_stack[] = '';
 		# ensure there is an `all` variable, so template can know all variables that were passed to it
 		# use ex: $Template->backend_data['page_data'] = $all;
-		if(!$vars['all']){
+		if(empty($vars['all'])){
 			$vars['all'] = $vars;
 		}
 
