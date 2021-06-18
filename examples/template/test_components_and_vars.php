@@ -1,10 +1,10 @@
-<? $template->parent('layout/basic_with_vars'); ?>
+<?php $template->parent('layout/basic_with_vars'); ?>
 
-<?	$template->section('header') ?>
+<?php	$template->section('header') ?>
 
 <span>I'm in the header</span>
 
-<?	$template->close_section() ?>
+<?php	$template->close_section() ?>
 
 <?= $template->get_template('component/header', ['id'=>'header_id']) ?>
 

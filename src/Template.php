@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 Wrapping:
 	for a got template, CURRENT, allow CURRENT to indicate a PARENT template ($template->parent(PARENT)).  Call PARENT after CURRENT to allow wrapping (see get_template doc).
@@ -321,19 +321,19 @@ class Template{
 			$write = true;
 			if($message[$i] == '$'){
 				$indicater = 1;
-			}elseif($indicater == 1 && $message[$i] == '{'){
+			}elseif($indicater == 1 && $message[$i] == '{'){ # '${' start
 				$write = false;
-				//remove previous character from previous depth
+				# clear the '$' from chars (since it is not a string literal, but a var/func)
 				$chars[$depth] = substr($chars[$depth],0,-1);
 
 				$indicater = 0;
 				$depth++;
 			}elseif($message[$i] == '\\'){
 				$escaped = true;
-			}elseif($depth > 0 && $message[$i] == '}' && !$escaped){ # special syntax brackets have closed, check meaning
+			}elseif($depth > 0 && $message[$i] == '}' && !$escaped){ # brackets have closed, check meaning
 				$write = false;
 				$parts = explode('|',$chars[$depth],2);
-				if(count($parts) > 1){ # this is a function
+				if(count($parts) > 1){ # use of '|' means this is a function
 					if($class_instance){
 						$value = call_user_func([$class_instance,$parts[0]], $parts[1]);
 					}else{ # default to global context for functions

@@ -1,1 +1,1 @@
-<? $template->parent('layout/basic'); ?><span>test.php</span>
+<?php $template->parent('layout/basic'); ?><span>test.php</span>
