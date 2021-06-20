@@ -6,6 +6,10 @@ linear display:
 	simply call get_template within templates
 */
 
+/* @notes
+-	using linux path instead of DIRECTORY_SEPARATOR
+*/
+
 namespace Grithin;
 
 use \Exception;
@@ -28,7 +32,7 @@ class Template{
 			# attempt to find template folder at first file level, or at one higher
 			$first_file = \Grithin\Reflection::firstFileExecuted();
 
-			$options['folder'] = dirname($first_file).'/template/';
+			$options['folder'] = dirname($first_file).'template/';
 			if(!is_dir($options['folder'])){
 				$options['folder'] = dirname($first_file).'/../template/';
 			}
@@ -272,7 +276,12 @@ class Template{
 //+	}
 
 
-	# inline interpretted templates
+	# Parse a special syntax template
+	/* example template
+	Hello ${name},
+	It's the current year (${datetime|Y})!
+	<
+	*/
 	/* about
 	-	handles applying functions from a class, or from global context, by using '${'functionName'|'param'}'
 	-	handles variables mapped to keys in $variables using '${'keyName'}'
@@ -281,8 +290,11 @@ class Template{
 		ex: ${urlencode|${customer_first_name}}
 	*/
 	/* param
+	message: < the string to parse >
 	variables: < dictionary of variables >
-	class_instance : < an optional class to which function names are referenced and unfound variables, using __get >
+	class_instance : < a class to which function names are referenced and unfound variables are sought, using __get >
+	options:
+		use_global_functions: < t:bool ><d:false>< whether to fallback to a global function if function is not found within class >
 	*/
 	/* examples
 	# basic variable replacement
@@ -299,7 +311,10 @@ class Template{
 	/*	param overload
 	$variables can be the $class_instance
 	*/
-	static function inline($message, $variables=[], $class_instance=null){
+	static function parse($message, $variables=[], $class_instance=null, $options=[]){
+		$defaults = ['use_global_functions'=>false];
+		$options = Dictionary::merge_deep($defaults, $options);
+
 		//escape only partially implemented
 		$charCount = strlen($message);
 		$depth = 0;
@@ -312,9 +327,12 @@ class Template{
 		#+ }
 
 		$class_has_variables = false;
-		if(in_array('ArrayAccess', class_implements($class_instance))){
-			$class_has_variables = true;
+		if($class_instance){
+			if(in_array('ArrayAccess', class_implements($class_instance))){
+				$class_has_variables = true;
+			}
 		}
+
 
 
 		for($i=0,$f=-1;$i<$charCount;$i++){
@@ -337,7 +355,9 @@ class Template{
 					if($class_instance){
 						$value = call_user_func([$class_instance,$parts[0]], $parts[1]);
 					}else{ # default to global context for functions
-						$value = call_user_func($parts[0],$parts[1]);
+						if($options['use_global_functions']){
+							$value = call_user_func($parts[0],$parts[1]);
+						}
 					}
 
 				}else{ # this is a variable
