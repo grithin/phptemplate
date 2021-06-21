@@ -58,9 +58,10 @@ To avoid using a variable that might not exist, the variables passed to `get` ar
 <?= isset($vars['name']) ? $name : 'Default Person' ?>
 ```
 
+`$vars` represents the variables passed in through `get`.  `$vars` can be overwritten by a passed variable.
 If `$vars` is overwritten, it can still be accessed with `$Template->vars`
 
-You can also access helpers that were overwritten
+You can also access class instance helpers that were overwritten
 ```
 <?= $helpers['name'] ?>
 <?= $Template->helpers['name'] ?>
