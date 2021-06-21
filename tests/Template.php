@@ -89,7 +89,7 @@ class TemplateClassTests extends TestCase{
 	function test_constructor(){
 
 		$template = new Template(['directory'=>__DIR__]);
-		$this->assertEquals(__DIR__.'/', $template->directory, 'memoized faliure');
+		$this->assertEquals(__DIR__.'/', $template->directory, 'paths filled');
 
 
 
@@ -108,7 +108,7 @@ class TemplateClassTests extends TestCase{
 			'upper' => function($x){ return strtoupper($x);}
 		];
 
-		$template = new Template(['directory'=>__DIR__.'/includes/templates/', 'helpers'=>$helpers]);
+		$template = new Template(['paths'=>[__DIR__.'/includes/templates/', __DIR__.'/includes/templates2/'], 'helpers'=>$helpers]);
 		$this->class = $template;
 
 
@@ -158,5 +158,10 @@ class TemplateClassTests extends TestCase{
 		$expect = "bob2<h1>bob2<b>sue<i>jan</i></b><b>dan</b>bob2</h1>";
 		$input = ['include_many', ['name'=>'bob2']];
 		$this->assert_equal_standard($expect, $input, 'get', 'many children, many parents');
+
+		$expect = 'bob2';
+		$input = ['plain2'];
+		$this->assert_equal_standard($expect, $input, 'get', 'plain template');
+
 	}
 }

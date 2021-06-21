@@ -19,10 +19,12 @@ use \Exception;
 class Template{
 	public $helpers = [];
 
-	protected $directory;
+	public $paths = [];
+	public $directory; # for convenience.  Most projects only have one view path
 	/** params
-	options
+	< options > < t:object >:
 		directory: < template directory >
+		paths: < list of paths to check for view files.  Directory is automatically prepended to this >
 		helpers: < a dictionary of values or functions for use within templates >
 	}
 	*/
@@ -42,10 +44,19 @@ class Template{
 				}
 			}
 		}
-		if(!is_dir($options['directory'])){
-			throw new \Exception('View folder doesn\'t exist "'.$options['directory'].'"');
+		$this->paths = !empty($options['paths']) ? $options['paths'] : [];
+		if($options['directory']){
+			array_unshift($this->paths, $options['directory']);
 		}
-		$this->directory = realpath($options['directory']).'/';
+
+		$this->directory = $this->paths[0].'/'; # for convenience.  Most projects only have one view path
+
+		foreach($this->paths as $path){
+			if(!is_dir($path)){
+				throw new \Exception('View path doesn\'t exist "'.$path.'"');
+			}
+		}
+
 
 		//++ }
 
@@ -61,9 +72,6 @@ class Template{
 	function __get($name){
 		if(in_array($name, ['vars', 'template'])){
 			return $this->current[$name];
-		}
-		if($name=='directory'){
-			return $this->directory;
 		}
 	}
 
@@ -102,7 +110,7 @@ class Template{
 		2.	use $template->inner variable created for the parent
 	*/
 	/* params
-	< template > < absolute or relative path from template directory > < relative path to the current template `get` is being called from >
+	< template > < absolute or relative path from view paths > < relative path to the current template `get` is being called from >
 	*/
 	function get($template,$vars=[]){
 		$this->parent_stack[] = [];
@@ -122,20 +130,31 @@ class Template{
 		}
 
 
+		$file_location = false;
 		#+ handle relative paths by making them relative to the calling template, if there is a calling template {
 		if($this->current &&
 			(substr($template, 0, 2) == './' || substr($template, 0, 3) == '../'))
 		{
-			$template = \Grithin\Files::resolve_relative($this->current['template'].'/../'.$template);
+			$file_location = \Grithin\Files::resolve_relative($this->current['file'].'/../'.$template);
 		}
 		#+ }
 
+		if(!$file_location){
+			foreach($this->paths as $path){
+				if(file_exists($path.'/'.$template)){
+					$file_location = $path.'/'.$template;
+					break;
+				}
+			}
+		}
+		if(!$file_location){
+			throw new \Exception("missing template file \"$template\"");
+		}
 		#+ maintain a current template variables, accounting for nesting {
 		$previous_current = $this->current;
-		$this->current = ['template'=>$template, 'vars'=>$vars];
+		$this->current = ['template'=>$template, 'vars'=>$vars, 'file'=>$file_location];
 		#+ }
-
-		\Grithin\Files::req($this->directory.$template,$used_vars);
+		\Grithin\Files::req($file_location,$used_vars);
 		$output = ob_get_clean();
 
 		$parent = array_pop($this->parent_stack);
