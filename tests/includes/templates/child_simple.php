@@ -1,0 +1,1 @@
+<?php $Template->parent('layout_simple') ?>bob

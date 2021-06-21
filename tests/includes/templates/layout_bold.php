@@ -1,0 +1,1 @@
+<b><?= $Template->inner ?></b>

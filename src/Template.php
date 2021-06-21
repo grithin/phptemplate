@@ -1,14 +1,16 @@
 <?php
 /**
 Wrapping:
-	for a got template, CURRENT, allow CURRENT to indicate a PARENT template ($template->parent(PARENT)).  Call PARENT after CURRENT to allow wrapping (see get_template doc).
+	for a got template, CURRENT, allow CURRENT to indicate a PARENT template ($template->parent(PARENT)).  Call PARENT after CURRENT to allow wrapping (see get doc).
 linear display:
-	simply call get_template within templates
+	simply call get within templates
 */
 
 /* @notes
 -	using linux path instead of DIRECTORY_SEPARATOR
 */
+
+
 
 namespace Grithin;
 
@@ -17,61 +19,77 @@ use \Exception;
 class Template{
 	public $helpers = [];
 
-	/**
-	@param	options	{
-		folder: <template folder>
-		control_folder: <control folder>
-		instance_vars: <vars avaiable as '$instance[]' in templates>
+	protected $directory;
+	/** params
+	options
+		directory: < template directory >
+		helpers: < a dictionary of values or functions for use within templates >
 	}
 	*/
 	function __construct($options=[]){
 
 		//++ resolve template folder {
 
-		if(empty($options['folder'])){
+		if(empty($options['directory'])){
 			# attempt to find template folder at first file level, or at one higher
-			$first_file = \Grithin\Reflection::firstFileExecuted();
+			$first_file_dir = dirname(\Grithin\Reflection::firstFileExecuted());
 
-			$options['folder'] = dirname($first_file).'template/';
-			if(!is_dir($options['folder'])){
-				$options['folder'] = dirname($first_file).'/../template/';
+			$options['directory'] = $first_file_dir.'template/';
+			if(!is_dir($options['directory'])){
+				$options['directory'] = $first_file_dir.'/../template/';
+				if(!is_dir($options['directory'])){
+					$options['directory'] = $first_file_dir.'/';
+				}
 			}
 		}
-		$options['folder'] = realpath($options['folder']).'/';
-
-		if(empty($options['folder'])){
-			throw new \Exception('View folder doesn\'t exist');
+		if(!is_dir($options['directory'])){
+			throw new \Exception('View folder doesn\'t exist "'.$options['directory'].'"');
 		}
+		$this->directory = realpath($options['directory']).'/';
 
 		//++ }
 
-		# resolve control folder
-		if(empty($options['control_folder'])){
-			$options['control_folder'] = realpath($options['folder'].'../control');
-		}
-		if(substr($options['control_folder'],-1) != '/'){
-			$options['control_folder'] .= '/'; # `folder` should end with `/`
-		}
-
-
-		$this->helpers = ['template'=>$this, 'Template'=>$this];
+		$this->helpers = ['template'=>$this, 'Template'=>$this, 't'=>$this];
 		if(!empty($options['helpers'])){
 			$this->helpers = array_merge($this->helpers, $options['helpers']);
 		}
 
 		$this->options = $options;
-
-		$this->url_path = substr($_SERVER['REQUEST_URI'],1);//request uri always starts with '/'
 	}
 
 
+	function __get($name){
+		if(in_array($name, ['vars', 'template'])){
+			return $this->current[$name];
+		}
+		if($name=='directory'){
+			return $this->directory;
+		}
+	}
+
+
+
+	/* about
+	it is necessary to use a stack because components within a template may have their own parents
+ 	A single $parent variable would be overwritten by partials that had parents within the parented template.
+	With a stack, that stack fits the linear progression of adding and removing parents as control flows from a partial and back to the including template
+	*/
+	protected $parent_stack = [];
 	/// setter for $parent
-	function parent($parent){
-		$this->parent_stack[] = $parent;
+	public function parent($parent, $vars=[]){
+		$this->parent_stack[] = [$parent, $vars];
 	}
-	public $parent_stack = []; # it is necessary to use a stack because components within a template may have their own parents (thus a single $parent variable would not work, and a stack must be used for linear progression)
+
 	public $inner;///< a buffer for the inner template content
-	public $current_template; #< the current template file
+	/*
+	Flow of "current" variable from included templates.  Note, `prev` is contexted to function call
+	-> current = t1
+		-> current = t2, (prev = t1)
+			-> current = p2, (prev = t2)
+			<- current = t2
+		<- current = t1
+	*/
+	public $current; #< the current template file
 	///used to get the content of a single template file
 	/**
 	@param	template	string path to template file relative to the templateFolder.  .php is appended to this path.
@@ -83,135 +101,62 @@ class Template{
 		1.	use the section creation functions
 		2.	use $template->inner variable created for the parent
 	*/
-	function get_template($template,$vars=[]){
-		$this->parent_stack[] = '';
+	/* params
+	< template > < absolute or relative path from template directory > < relative path to the current template `get` is being called from >
+	*/
+	function get($template,$vars=[]){
+		$this->parent_stack[] = [];
 		# ensure there is an `all` variable, so template can know all variables that were passed to it
 		# use ex: $Template->backend_data['page_data'] = $all;
-		if(empty($vars['all'])){
-			$vars['all'] = $vars;
-		}
 
-		$used_vars = array_merge($this->helpers, $vars);
+		# set arrayed access for variables
+		$used_vars = array_merge(['vars'=>$vars, 'helpers'=>$this->helpers], $vars);
+
+		# combine helpers with passed variables
+		$used_vars = array_merge($this->helpers, $used_vars);
+		$used_vars['Template'] = $this;
 
 		ob_start();
 		if(substr($template,-4) != '.php'){
 			$template = $template.'.php';
 		}
 
+
 		#+ handle relative paths by making them relative to the calling template, if there is a calling template {
-		if($this->current_template && substr($template, 0, 2) == './' || substr($template, 0, 3) == '../'){
-			$template = \Grithin\Files::absolute_path($this->current_template.'/../'.$template);
+		if($this->current &&
+			(substr($template, 0, 2) == './' || substr($template, 0, 3) == '../'))
+		{
+			$template = \Grithin\Files::resolve_relative($this->current['template'].'/../'.$template);
 		}
 		#+ }
 
-		#+ maintain a current_template variable, accounting for nesting {
-		$previous_current = $this->current_template;
-		$this->current_template = $template;
+		#+ maintain a current template variables, accounting for nesting {
+		$previous_current = $this->current;
+		$this->current = ['template'=>$template, 'vars'=>$vars];
 		#+ }
 
-
-		\Grithin\Files::req($this->options['folder'].$template,$used_vars);
+		\Grithin\Files::req($this->directory.$template,$used_vars);
 		$output = ob_get_clean();
 
 		$parent = array_pop($this->parent_stack);
 
 		if($parent){ # will either be '', indicating no parent, or the parent template for this particular template
 			$this->inner = $output;
-			$template = $parent;
-			$output = $this->get_template($template,$vars);
+			$template = $parent[0];
+			$output = $this->get($template,array_merge($vars, $parent[1]));
 			unset($this->inner);
-			array_pop($this->parent_stack);
+			array_pop($this->parent_stack); # Clear the padding at the start
 		}
 		#+ maintain a current_template variable, accounting for nesting {
-		$this->current_template = $previous_current;
+		$this->current = $previous_current; # b/c this is a local variable, it will be unique on each get(), allowing for infinite depth
 		#+ }
 
 		return $output;
 	}
-	/// alias for get_template
-	function get($template,$vars=[]){
-		return $this->get_template($template,$vars);
-	}
-
-	# get template name from a control path
-	public function from_control_path($path, $template_name=null){
-		#+ sanity check {
-		$characters = strlen($this->options['control_folder']);
-		if($this->options['control_folder'] != substr($path, 0, $characters)){
-			throw new Exception('control path does not match parameter');
-		}
-		#+ }
-
-		$relative_current_control_file = substr($path,$characters);
-		if($template_name){
-			return dirname($relative_current_control_file).'/'.$template_name;
-		}else{
-			return $relative_current_control_file;
-		}
-	}
-
-	# try to find the current control file from the debug stack
-	public function current_control_file($back = 6){
-		if($back){ #< go back as far as 5 stack items looking for the control folder
-			$trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $back);
-		}else{
-			$trace = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS);
-		}
-
-		$characters = strlen($this->options['control_folder']);
-		foreach($trace as $item){
-			if($this->options['control_folder'] == substr($item['file'], 0, $characters)){
-				return $item['file'];
-			}
-		}
-
-		if(!$back){ # attempt a full backtrace
-			return $this->current_control_file(null);
-		}
-
-		throw new Exception('could not find control file in debug stack');
-	}
-	public function template_relative_path_from_current($template_name=null){
-		return $this->from_control_path($this->current_control_file(), $template_name);
-	}
-
-	/// get the template corresponding to the current control.  Must call from within the control.  I recommend you use `from` instead, since it doesn't have the overhead of a backtrace
-	public function get_current($vars=[]){
-		$template_file = $this->template_relative_path_from_current();
-		return $this->get($template_file, $vars);
-	}
-	public function from_current($template_name=null, $vars=[]){
-		$template_file = $this->template_relative_path_from_current($template_name);
-		return $this->get($template_file, $vars);
-	}
-	# find template based on input control file path
-	function from($file, $vars=[]){
-		return $this->get($this->from_control_path($file), $vars);
-	}
-
-	/// display and end
-	function end_template($template, $vars=[]){
-		echo $this->get_template($template, $vars);
-		exit;
-	}
-	/// alias for end_template
-	function end($template, $vars=[]){
-		return $this->end_template($template, $vars);
-	}
-	/// display and end
-	function end_current($vars=[]){
-		echo $this->get_current($vars);
-		exit;
-	}
-	/// display and end
-	function end_from($file, $vars=[]){
-		echo $this->get($this->from_control_path($file), $vars);
-		exit;
-	}
 
 
 //+	section handling {
-	public $open_section = '';
+	protected $open_section = '';
 	public $sections = [];
 	/// starts or ends a section container
 	/**
@@ -236,17 +181,6 @@ class Template{
 			ob_start();
 		}
 	}
-	/// start section, ensuring no other section is open
-	public function section_start($name){
-		if($this->open_section){
-			throw new \Exception('Section is already open: "'.$this->open_section.'"');
-		}
-		$this->section($name);
-	}
-	# alias, deprecated
-	public function start_section($name){
-		call_user_func_array([$this, 'section_start'], func_get_args());
-	}
 	/// end section, ensuring a section is open
 	public function section_end(){
 		if(!$this->open_section){
@@ -254,47 +188,61 @@ class Template{
 		}
 		$this->section();
 	}
-	# alias, deprecated
-	public function close_section(){
-		call_user_func_array([$this, 'section_end'], func_get_args());
-	}
-	# close open section and open new section
-	public function section_next($name){
-		if(!$this->open_section){
-			throw new \Exception('No open section');
-		}
-		$this->sections[$this->open_section] = ob_get_clean();
-		$this->open_section = $name;
-		ob_start();
-	}
-
-
-	/// gets the string collected under a section name.
-	public function get_section($name){
-		return $this->sections[$name];
-	}
 //+	}
 
 
 	# Parse a special syntax template
+
+	/* about
+	It is sometimes necessary to pass an string to intepret with functionality and variables, while having the need that such interpretation does not cause insecurity (like with mail templates generated by administration).  To do this, a special language is provided, and you can control what functions and variables are used in the parsing.
+
+	*/
+
 	/* example template
 	Hello ${name},
-	It's the current year (${datetime|Y})!
-	<
+	It's the current year (${date|Y})!
+
+	You were born on ${date|${dob}}
 	*/
-	/* about
-	-	handles applying functions from a class, or from global context, by using '${'functionName'|'param'}'
-	-	handles variables mapped to keys in $variables using '${'keyName'}'
-		-	the variables will be resolved using $class_instance->__get() if not found withing the variable dictionary
-	-	handles nesting:
-		ex: ${urlencode|${customer_first_name}}
+	/* example
+	$obj = new StdClass;
+	$obj->upper = function($v){
+		return strtoupper($v);
+	};
+
+	Template::parse('Hello ${upper|${name}}', ['name'=>'bob'], $obj);
 	*/
-	/* param
+
+	/* notes
+	-	by default, global functions are turned off.  See params `options`
+	-	functions only accept one, string input.  But, you can split the string up
+	-	you can nest variables and other functions within functions
+		-	'${'functionName'|'param'}'
+	*/
+
+	/* About variables
+	One of
+	-	param `variables`
+	-	Object implementing ArrayAccess
+	-	Object property
+	*/
+
+	/* About functions
+	One of
+	-	Object method
+	-	Object property closure
+	*/
+
+
+	/* params
 	message: < the string to parse >
 	variables: < dictionary of variables >
 	class_instance : < a class to which function names are referenced and unfound variables are sought, using __get >
 	options:
 		use_global_functions: < t:bool ><d:false>< whether to fallback to a global function if function is not found within class >
+		error_on:
+			variable: < t:bool > < if a variable is missing, whether to throw an exception >
+			function: < t:bool > < if a function is missing, whether to throw an exception >
 	*/
 	/* examples
 	# basic variable replacement
@@ -312,7 +260,13 @@ class Template{
 	$variables can be the $class_instance
 	*/
 	static function parse($message, $variables=[], $class_instance=null, $options=[]){
-		$defaults = ['use_global_functions'=>false];
+		$defaults = [
+			'use_global_functions'=>false,
+			'error_on'=>[
+				'variable' => false,
+				'function' => true
+			]
+		];
 		$options = Dictionary::merge_deep($defaults, $options);
 
 		//escape only partially implemented
@@ -353,19 +307,48 @@ class Template{
 				$parts = explode('|',$chars[$depth],2);
 				if(count($parts) > 1){ # use of '|' means this is a function
 					if($class_instance){
-						$value = call_user_func([$class_instance,$parts[0]], $parts[1]);
+						try{
+							$key = $parts[0];
+							if(($class_instance->$key) instanceof \Closure){
+								# try calling it using either defined methods or __call
+								$value = call_user_func(($class_instance->$key), $parts[1]);
+							}else{
+								# try calling it using either defined methods or __call
+								$value = call_user_func([$class_instance,$parts[0]], $parts[1]);
+							}
+
+						}catch(\Exception $e){
+							if(substr($e->getMessage(),0,14) !='call_user_func'){
+								throw $e;
+							}
+							throw new \Exception('Missing function: '.$parts[0]);
+						}
+
 					}else{ # default to global context for functions
 						if($options['use_global_functions']){
 							$value = call_user_func($parts[0],$parts[1]);
+						}else{
+							throw new \Exception('Missing function: '.$parts[0]);
 						}
 					}
 
 				}else{ # this is a variable
-					if(array_key_exists($parts[0], $variables)){ # check variable dictionary
-						$value = $variables[$parts[0]];
+					$key = $parts[0];
+					if(array_key_exists($key, $variables)){ # check variable dictionary
+						$value = $variables[$key];
 					}elseif($class_has_variables){
-						$value = $class_instance[$parts[0]];
+						$value = $class_instance[$key];
+					}elseif(
+						$class_instance
+						&& property_exists($class_instance, $key)
+						&& !(($class_instance->$key) instanceof \Closure))
+					{
+						# use class propperty if it is not a method
+						$value = $class_instance->$key;
 					}else{ # no variable found, return blank
+						if($options['error_on']['variable']){
+							throw new \Exception('Missing variable: '.$key);
+						}
 						$value = '';
 					}
 				}

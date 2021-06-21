@@ -1,0 +1,1 @@
+<?php $Template->parent('layout_sectioned') ?>bob<?php $Template->section('content')?>section content<?php $Template->section_end()?>

@@ -1,1 +1,0 @@
-<?php $template->parent('layout/basic'); ?><span>test.php</span>

@@ -1,0 +1,1 @@
+<?= $upper('bob') ?>|<?= $helpers['upper']('bob') ?>|<?= $Template->helpers['upper']('bob')?>

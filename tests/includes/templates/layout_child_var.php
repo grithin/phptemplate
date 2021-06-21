@@ -1,0 +1,1 @@
+<?= $name ?><h1><?= $Template->inner ?></h1>

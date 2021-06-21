@@ -1,0 +1,1 @@
+<h1><?= $Template->inner ?></h1><div><?= $Template->sections['content']?></div>

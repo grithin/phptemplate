@@ -11,8 +11,8 @@
         }
     ],
     "require": {
-        "php": ">=7.4",
-        "grithin/phpbase": ">=5.0.0"
+        "php": ">=7",
+        "grithin/phpbase": "dev-master"
     },
     "autoload": {
         "psr-4": {

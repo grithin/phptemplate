@@ -1,0 +1,1 @@
+<?= $name ?>|<?= $vars['name'] ?>|<?= $Template->vars['name'] ?>|<?= $helpers['name'] ?>|<?= $Template->helpers['name']?>
