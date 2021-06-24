@@ -15,7 +15,7 @@ function logit($data){
 }
 
 /**
-* @group Dictionary
+* @group Template
 */
 class TemplateClassTests extends TestCase{
 	use \Bootstrap\Test;
