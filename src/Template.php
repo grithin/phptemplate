@@ -1,4 +1,13 @@
 <?php
+
+
+namespace Grithin;
+
+use \Exception;
+
+
+
+/** For handling template hierarchy or inline templates */
 /**
 Wrapping:
 	for a got template, CURRENT, allow CURRENT to indicate a PARENT template ($template->parent(PARENT)).  Call PARENT after CURRENT to allow wrapping (see get doc).
@@ -6,15 +15,10 @@ linear display:
 	simply call get within templates
 */
 
-/* @notes
+/** @notes
 -	using linux path instead of DIRECTORY_SEPARATOR
 */
 
-
-
-namespace Grithin;
-
-use \Exception;
 
 class Template{
 	public $helpers = [];
@@ -264,13 +268,13 @@ class Template{
 			function: < t:bool > < if a function is missing, whether to throw an exception >
 	*/
 	/** examples
-	/** basic variable replacement */
+	# basic variable replacement
 	$x = inline('hello ${bob}, ', ['bob'=>'mokneys']);
 
-	/** globally contexted function with variable replacement */
+	# globally contexted function with variable replacement
 	$x = inline('hello ${ucwords|${bob}}, ', ['bob'=>'mokneys']);
 
-	/** class instance provided contexted function with variable replacement */
+	# class instance provided contexted function with variable replacement
 	class MakeZero{ function doit($x){ return preg_replace('@.@','0', $x); } }
 	$x = inline('hello ${doit|${bob}}, ', ['bob'=>'mokneys'], new MakeZero);
 
