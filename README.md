@@ -9,6 +9,31 @@ __Features__
 	-	relies on filesystem hierarchy
 	-	allows for relative path inclusion (relative to current template)
 
+## A Note On PHP-HTML Integration
+Spaghetti code is bad, but integrating PHP code with HTML does not have to result in spaghetti code.
+
+If you follow a [sane set of rules](https://github.com/CLR-MO/standard-coding#html-integration), and you do not mix control code with view code, you will be fine.
+
+The reasons people present for using templating systems with custom syntax are often invalid:
+-	Better syntax.  [This depends on your point of view](https://github.com/CLR-MO/standard-coding#compairson-to-twig)
+-	Short helper functions
+This tool can have short helper functions.  We can make `$e` to html escaping:
+```html
+<span><?= $e($name) ?></span>
+```
+
+The one reason that remains, after disgarding avoidance of spaghetti code, is security.  Some template engines allow you to prevent execution of arbitrary PHP code, which allows you to reduce the damage designes might do when using code.  If this is a concern, then do go with another templating engine that has this feature.
+
+## Why?
+Probably mainly because of a bad experience in 2006 when I had to rewrite various parts of the smarty templating engine to fix caching problems the company was having.  But, apart from that:
+
+-	I don't see the benefit in adding more custom syntax developers have to learn on top of PHP
+-	Sometimes it is necessary to have PHP code that formats data prior to it being displayed in the template.   With custom syntax templating engines, this PHP code is forced to be in the control, even though it is view code.
+-	Laravel's Blade templating engine is ridiculous.  Among other things, it passes arguments in to helper functions as a single, unparsed string.  Good luck figuring out how to do a relative path inclusion of another template file within a template.
+-	Twig.  If you want to pass variables to a parent template, you have to turn the variables into blocks.  With this engine, not only are template variables that were passed in to the child passed thru to the parent, but the child can add variables to pass to the parent.
+-	In general, the feature set of a sub-PHP template will always be less than a PHP template.
+
+
 
 
 ## Guide
