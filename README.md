@@ -16,13 +16,13 @@ If you follow a [sane set of rules](https://github.com/CLR-MO/standard-coding#ht
 
 The reasons people present for using templating systems with custom syntax are often invalid:
 -	Better syntax.  [This depends on your point of view](https://github.com/CLR-MO/standard-coding#compairson-to-twig)
--	Short helper functions
-This tool can have short helper functions.  We can make `$e` to html escaping:
+-	Short helper functions.
+This tool can have short helper functions.  We can make `$e` do html escaping:
 ```html
 <span><?= $e($name) ?></span>
 ```
 
-The one reason that remains, after disgarding avoidance of spaghetti code, is security.  Some template engines allow you to prevent execution of arbitrary PHP code, which allows you to reduce the damage designes might do when using code.  If this is a concern, then do go with another templating engine that has this feature.
+The one reason that remains, after discarding avoidance of spaghetti code, is security.  Some template engines allow you to prevent execution of arbitrary PHP code, which allows you to reduce the damage designes might do when using code.  If this is a concern, then do go with another templating engine that has this feature.
 
 ## Why?
 Probably mainly because of a bad experience in 2006 when I had to rewrite various parts of the smarty templating engine to fix caching problems the company was having.  But, apart from that:
