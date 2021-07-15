@@ -22,7 +22,8 @@ This tool can have short helper functions.  We can make `$e` do html escaping:
 <span><?= $e($name) ?></span>
 ```
 
-The one reason that remains, after discarding avoidance of spaghetti code, is security.  Some template engines allow you to prevent execution of arbitrary PHP code, which allows you to reduce the damage designes might do when using code.  If this is a concern, then do go with another templating engine that has this feature.
+The one reason that remains, after discarding avoidance of spaghetti code, is security.  Some template engines allow you to prevent execution of arbitrary PHP code, which allows you to reduce the damage designers might do when using code.  
+Although security can be done even when the template is written with native PHP code, (`get_all_tokens`), I have had no need for such security so I have not extended this tool to do that, and if you need such security, you should go with another templating engine that has this feature (twig) or convince me to spend the time extending this tool.
 
 ## Why?
 Probably mainly because of a bad experience in 2006 when I had to rewrite various parts of the smarty templating engine to fix caching problems the company was having.  But, apart from that:
